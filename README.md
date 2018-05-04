@@ -72,7 +72,7 @@ Consul observer is a deamon script that performs several important functions:
 - The script can start and end the process in which the CEP program is spinning with the configuration received by the script.
 - By changing the "ModifyIndex" field in the response from Consul, the script understands that administrators have changed the configuration for this device. In this case, it terminates the process on the OS in which the CEP program is running, and then starts a new one, with the same configuration.
 - 
-[![pic 1](https://github.com/MatveyMalatsion/hierarch_cep_concept/blob/master/1.png?raw=true)](https://www.dropbox.com/s/acambknkmu0m4bo/3.png?dl=0)
+[![pic 3](https://github.com/MatveyMalatsion/hierarch_cep_concept/blob/master/3.png?raw=true)](https://www.dropbox.com/s/acambknkmu0m4bo/3.png?dl=0)
 
 #### Implementation of Consul Observer
 
