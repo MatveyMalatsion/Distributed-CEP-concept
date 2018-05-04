@@ -20,7 +20,7 @@ From these requirements a number of technical subtasks follow:
 
 ## Highlevel concept
 
-[![pic 1](https://photos-2.dropbox.com/t/2/AABXKiMpd9D3ZYv7Cvdp_wpNQ2pw8P9vc71NDA7spcKb4A/12/1092976544/png/32x32/1/_/1/2/2.png/EPCd6qcLGAUgBygH/4hJncjZ79F3d1xd_Dm24AeO8z4gKTssGeFoc6-HI4yg?preserve_transparency=1&size=1024x768&size_mode=3)](https://www.dropbox.com/s/0vi52t91ukkwy3u/2.png)
+[![pic 1](https://github.com/MatveyMalatsion/hierarch_cep_concept/blob/master/2.png?raw=true)](https://www.dropbox.com/s/0vi52t91ukkwy3u/2.png)
 
 (picture clickable)
 
@@ -72,7 +72,7 @@ Consul observer is a deamon script that performs several important functions:
 - The script can start and end the process in which the CEP program is spinning with the configuration received by the script.
 - By changing the "ModifyIndex" field in the response from Consul, the script understands that administrators have changed the configuration for this device. In this case, it terminates the process on the OS in which the CEP program is running, and then starts a new one, with the same configuration.
 - 
-[![pic 1](https://photos-3.dropbox.com/t/2/AAD0yNyNLMV6BlUxsgfBPvo1tAUlZry82P8R3FRba1B0sQ/12/1092976544/png/32x32/1/_/1/2/3.png/EPCd6qcLGAYgBygH/JZIN2i5LikK_1CYZduNDS6zZd8JuY_snM_bnvIuX0J0?preserve_transparency=1&size=1280x960&size_mode=3)](https://www.dropbox.com/s/acambknkmu0m4bo/3.png?dl=0)
+[![pic 1](https://github.com/MatveyMalatsion/hierarch_cep_concept/blob/master/1.png?raw=true)](https://www.dropbox.com/s/acambknkmu0m4bo/3.png?dl=0)
 
 #### Implementation of Consul Observer
 
