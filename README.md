@@ -28,7 +28,7 @@ From these requirements a number of technical subtasks follow:
 
 In a distributed system, there is some set of computing nodes. By abstracting from their purpose (they can be either embedded devices, or servers or cloud platforms), the main thing is that they have a UNIX-like environment.
 
-On each node, a local Apache instance of the incoming data stream is deployed.
+On each node, a local Apache Flink instance of the incoming data stream is deployed.
 
 For each device, the Consul.io agent is installed as a client. The Consul.io server is deployed separately. Device-agents register themselves and their services (Kafka and others) in the Consul-server. From now on, they form a cluster with a distributed key / value database. When registering, the server receives their network coordinates, information about the services and gets the opportunity to check their operability. Nodes can freely register and leave the Consul server.
 
