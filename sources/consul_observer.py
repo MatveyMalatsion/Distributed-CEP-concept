@@ -37,36 +37,44 @@ def main():
     jarPath = sys.argv[1]
     consulPort = sys.argv[2]
 
-    long_polling_interval = 10  # seconds
+    consul_index = None
     cached_modify_index = -1
-
     java_bot = Popen(['pwd'], stdout=sys.stdout, stderr=sys.stderr, stdin=PIPE, shell=True)
     java_bot.wait()
     java_bot.terminate()
 
+
+
     try:
         while True:
             url = "http://localhost:" + consulPort + "/v1/kv/" + get_local_ip()
+
+            if consul_index is not None:
+                url += "?index=" + str(consul_index)
+
             request = Request(url)
             print("Starting pulling configuration from url: " + url)
 
             try:
-                jsonString = urlopen(request).read().decode()
-                print("RECIVED CONFIGURATION FROM CONSUL: " + jsonString)
-
+                response = urlopen(request)
+                headers = response.info()
+                print(headers)
+                consul_index = headers.get('X-Consul-Index', None)
+                print(str(consul_index))
+                jsonString = response.read().decode()
+                print("Recived configuration from consul: " + jsonString)
                 _json = json.loads(jsonString)
 
-                modify_index = _json[0]["ModifyIndex"]
 
                 poll = java_bot.poll()
-                if modify_index != cached_modify_index or poll is not None:
-                    print("CONFIG WAS MODIFIED! RESTARTING PROCESS")
+                if consul_index != cached_modify_index or poll is not None:
+                    print("Config was modified! Restarting process")
                     java_bot.terminate()
                     java_bot = restartProcessWithConfig(_json[0]["Value"], jarPath)
                 else:
-                    print("CONFIG WASN'T MODIFIED. PENDING")
+                    print("Config wasn't modified. Pending.")
 
-                cached_modify_index = modify_index
+                cached_modify_index = consul_index
 
             except urllib.error.HTTPError as e:
                 if e.code == 404:
@@ -74,7 +82,7 @@ def main():
                 else:
                     print(e)
 
-            sleep(long_polling_interval)
+            # sleep(long_polling_interval)
 
     except KeyboardInterrupt:
         pass
