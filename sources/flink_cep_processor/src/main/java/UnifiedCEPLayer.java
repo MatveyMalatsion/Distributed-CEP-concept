@@ -7,6 +7,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.IngestionTimeExtractor;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.apache.flink.cep.pattern.Pattern;
@@ -22,13 +23,14 @@ public class UnifiedCEPLayer {
     private String _kafkaOutputServer;
     private String _kafkaOutputTopic;
 
-
+    private ArrayList<Pattern<JSONObject, JSONObject>> parsedPatterns = new ArrayList<>();
+    private JSONObject configuration;
 
     ScriptEngine engine;
     StreamExecutionEnvironment _env;
 
     public UnifiedCEPLayer(JSONObject configuration, StreamExecutionEnvironment env) throws Exception{
-
+        this.configuration = configuration;
         _env = env;
         // extract input and output
         JSONObject inputConfig = (JSONObject) configuration.get("readFromKafka");
@@ -55,58 +57,13 @@ public class UnifiedCEPLayer {
 
         // extract patterns
         JSONArray patterns = (JSONArray)configuration.get("patterns");
-        ArrayList<Pattern<JSONObject, JSONObject>> parsedPatterns = new ArrayList<>();
+
         Iterator<JSONArray> objectIterator = patterns.iterator();
 
         while (objectIterator.hasNext()){
             parsedPatterns.add(patternFromJSON((JSONArray) objectIterator.next()));
         }
 
-        //configure input
-        Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", this._kafkaInputServer);
-
-        //configure partition rule
-        String partitionKey = (String) configuration.get("partitionKey");
-
-        KeySelector<JSONObject, String> partitionRule = new KeySelector<JSONObject, String>() {
-            @Override
-            public String getKey(JSONObject value) throws Exception {
-                return (String) value.get(partitionKey);
-            }
-        };
-
-        //creating all messages stream
-        DataStream<JSONObject> messageStream = _env.addSource(new FlinkKafkaConsumer09<JSONObject>(this._kafkaInputTopic,
-                new UnifiedDeserializationSchema(),
-                properties
-        )).assignTimestampsAndWatermarks(new IngestionTimeExtractor<>());
-
-        //creating partiton stream
-        DataStream<JSONObject> partitionedStream = messageStream.keyBy(partitionRule);
-
-        ArrayList<PatternStream<JSONObject>> streams = new ArrayList<PatternStream<JSONObject>>();
-
-        parsedPatterns.forEach(tPattern -> streams.add(CEP.pattern(partitionedStream, tPattern)));
-
-        ArrayList<DataStream<JSONObject>> warnings = new ArrayList<>();
-
-        //detecting patterns
-        streams.forEach(stream -> {
-            warnings.add(stream.select(new PatternSelectFunction<JSONObject, JSONObject>() {
-                @Override
-                public JSONObject select(Map<String, List<JSONObject>> map) throws Exception {
-                    JSONObject obj = new JSONObject();
-                    obj.putAll(map);
-                    return obj;
-                }
-            }));
-        });
-
-        //print alarms
-        warnings.forEach(w -> w.map( warning ->{
-            return warning;
-        }).print());
 
     }
 
@@ -158,7 +115,7 @@ public class UnifiedCEPLayer {
             case "_oneOrMore":
                 pattern = pattern.oneOrMore();
                 break;
-            case "_timesOrMode":
+            case "_timesOrMore":
                 pattern = pattern.timesOrMore((Integer)appender.get(1));
                 break;
             case "_times":
@@ -186,6 +143,58 @@ public class UnifiedCEPLayer {
     }
 
     UnifiedCEPLayer startObserving(){
+        //configure input
+        Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", this._kafkaInputServer);
+
+        //configure partition rule
+        String partitionKey = (String) configuration.get("partitionKey");
+
+        KeySelector<JSONObject, String> partitionRule = new KeySelector<JSONObject, String>() {
+            @Override
+            public String getKey(JSONObject value) throws Exception {
+                return (String) value.get(partitionKey);
+            }
+        };
+
+        //creating all messages stream
+        DataStream<JSONObject> messageStream = _env.addSource(new FlinkKafkaConsumer09<JSONObject>(this._kafkaInputTopic,
+                new UnifiedDeserializationSchema(),
+                properties
+        )).assignTimestampsAndWatermarks(new IngestionTimeExtractor<>());
+
+        //creating partiton stream
+        DataStream<JSONObject> partitionedStream = messageStream.keyBy(partitionRule);
+
+        ArrayList<PatternStream<JSONObject>> streams = new ArrayList<PatternStream<JSONObject>>();
+
+        parsedPatterns.forEach(tPattern -> streams.add(CEP.pattern(partitionedStream, tPattern)));
+
+        ArrayList<DataStream<JSONObject>> warnings = new ArrayList<>();
+
+        //detecting patterns
+        streams.forEach(stream -> {
+            warnings.add(stream.select(new PatternSelectFunction<JSONObject, JSONObject>() {
+                @Override
+                public JSONObject select(Map<String, List<JSONObject>> map) throws Exception {
+                    JSONObject obj = new JSONObject();
+                    obj.putAll(map);
+                    return obj;
+                }
+            }));
+        });
+
+        //print alarms
+        warnings.forEach(w -> w.map( warning ->{
+            return warning;
+        }).print());
+
+        FlinkKafkaProducer09 producer = new FlinkKafkaProducer09<JSONObject>(_kafkaOutputServer, _kafkaOutputTopic, new UnifiedSerializationSchema());
+
+        warnings.forEach(w -> w.map( warning ->{
+            return warning;
+        }).addSink(producer));
+
         return this;
     }
 
