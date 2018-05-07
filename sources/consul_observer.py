@@ -4,7 +4,6 @@ import socket
 import json
 import base64
 from subprocess import Popen, PIPE
-from time import sleep
 from urllib.request import Request, urlopen
 
 
@@ -81,8 +80,6 @@ def main():
                     print("Haven't configuration for your machine in Consul yet. Pending")
                 else:
                     print(e)
-
-            # sleep(long_polling_interval)
 
     except KeyboardInterrupt:
         pass
