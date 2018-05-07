@@ -71,7 +71,8 @@ Consul observer is a daemon script that performs several important functions:
 - It periodically polls the local Consul HTTP-api to obtain a configuration from the distributed database.
 - It can start and end processes, in which the CEP program is running with the configuration received by the script.
 - By changing the "ModifyIndex" field in Consul response, it can understand that administrators have changed the configuration for this device. In this case, it terminates the process on the OS, in which the CEP program is running, and then starts a new one with the same configuration.
-- 
+- It's possible to use Long Polling technology to track "ModifyIndex", by passing it to request as parameter. Script makes request to HTTP-api, but server responses only when data for key will be modified. With long polling, it us possible to reduce the number of requests to a minimum, while still receiving real-time updates.
+
 [![pic 3](https://github.com/MatveyMalatsion/hierarch_cep_concept/blob/master/3.png?raw=true)](https://www.dropbox.com/s/acambknkmu0m4bo/3.png?dl=0)
 
 #### Implementation of Consul Observer
@@ -85,7 +86,6 @@ import socket
 import json
 import base64
 from subprocess import Popen, PIPE
-from time import sleep
 from urllib.request import Request, urlopen
 
 
@@ -118,44 +118,50 @@ def main():
     jarPath = sys.argv[1]
     consulPort = sys.argv[2]
 
-    long_polling_interval = 10  # seconds
+    consul_index = None
     cached_modify_index = -1
-
     java_bot = Popen(['pwd'], stdout=sys.stdout, stderr=sys.stderr, stdin=PIPE, shell=True)
     java_bot.wait()
     java_bot.terminate()
 
+
+
     try:
         while True:
             url = "http://localhost:" + consulPort + "/v1/kv/" + get_local_ip()
+
+            if consul_index is not None:
+                url += "?index=" + str(consul_index)
+
             request = Request(url)
             print("Starting pulling configuration from url: " + url)
 
             try:
-                jsonString = urlopen(request).read().decode()
-                print("RECIVED CONFIGURATION FROM CONSUL: " + jsonString)
-
+                response = urlopen(request)
+                headers = response.info()
+                print(headers)
+                consul_index = headers.get('X-Consul-Index', None)
+                print(str(consul_index))
+                jsonString = response.read().decode()
+                print("Recived configuration from consul: " + jsonString)
                 _json = json.loads(jsonString)
 
-                modify_index = _json[0]["ModifyIndex"]
 
                 poll = java_bot.poll()
-                if modify_index != cached_modify_index or poll is not None:
-                    print("CONFIG WAS MODIFIED! RESTARTING PROCESS")
+                if consul_index != cached_modify_index or poll is not None:
+                    print("Config was modified! Restarting process")
                     java_bot.terminate()
                     java_bot = restartProcessWithConfig(_json[0]["Value"], jarPath)
                 else:
-                    print("CONFIG WASN'T MODIFIED. PENDING")
+                    print("Config wasn't modified. Pending.")
 
-                cached_modify_index = modify_index
+                cached_modify_index = consul_index
 
             except urllib.error.HTTPError as e:
                 if e.code == 404:
                     print("Haven't configuration for your machine in Consul yet. Pending")
                 else:
                     print(e)
-
-            sleep(long_polling_interval)
 
     except KeyboardInterrupt:
         pass
@@ -262,216 +268,6 @@ Since all methods of the builder are called sequentially, it is possible to repr
 
 Java realization (available as [Gist](https://gist.github.com/MatveyMalatsion/d3e8905ef530c7bec76d5e2dd391dcdd)):
 
-```java
-import org.apache.flink.api.java.functions.KeySelector;
-import org.apache.flink.cep.CEP;
-import org.apache.flink.cep.PatternSelectFunction;
-import org.apache.flink.cep.PatternStream;
-import org.apache.flink.cep.pattern.conditions.SimpleCondition;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.IngestionTimeExtractor;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.apache.flink.cep.pattern.Pattern;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import java.util.*;
-
-public class UnifiedCEPLayer {
-
-    private String _kafkaInputServer;
-    private String _kafkaInputTopic;
-    private String _kafkaOutputServer;
-    private String _kafkaOutputTopic;
-
-
-
-    ScriptEngine engine;
-    StreamExecutionEnvironment _env;
-
-    public UnifiedCEPLayer(JSONObject configuration, StreamExecutionEnvironment env) throws Exception{
-
-        _env = env;
-        // extract input and output
-        JSONObject inputConfig = (JSONObject) configuration.get("readFromKafka");
-        JSONObject outputConfig = (JSONObject) configuration.get("writeToKafka");
-
-        _kafkaInputServer = (String) inputConfig.get("server");
-        _kafkaInputTopic  = (String) inputConfig.get("topic");
-
-        _kafkaOutputServer = (String) outputConfig.get("server");
-        _kafkaOutputTopic  = (String) outputConfig.get("topic");
-
-        // extract conditions
-        ScriptEngineManager manager = new ScriptEngineManager();
-        engine = manager.getEngineByName("JavaScript");
-        UnifiedCondition.invoker = (Invocable)engine;
-
-        JSONArray conditions = (JSONArray) configuration.get("conditions");
-
-        Iterator<String> iterator = conditions.iterator();
-
-        while (iterator.hasNext()){
-            engine.eval(iterator.next());
-        }
-
-        // extract patterns
-        JSONArray patterns = (JSONArray)configuration.get("patterns");
-        ArrayList<Pattern<JSONObject, JSONObject>> parsedPatterns = new ArrayList<>();
-        Iterator<JSONArray> objectIterator = patterns.iterator();
-
-        while (objectIterator.hasNext()){
-            parsedPatterns.add(patternFromJSON((JSONArray) objectIterator.next()));
-        }
-
-        //configure input
-        Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", this._kafkaInputServer);
-
-        //configure partition rule
-        String partitionKey = (String) configuration.get("partitionKey");
-
-        KeySelector<JSONObject, String> partitionRule = new KeySelector<JSONObject, String>() {
-            @Override
-            public String getKey(JSONObject value) throws Exception {
-                return (String) value.get(partitionKey);
-            }
-        };
-
-        //creating all messages stream
-        DataStream<JSONObject> messageStream = _env.addSource(new FlinkKafkaConsumer09<JSONObject>(this._kafkaInputTopic,
-                new UnifiedDeserializationSchema(),
-                properties
-        )).assignTimestampsAndWatermarks(new IngestionTimeExtractor<>());
-
-        //creating partiton stream
-        DataStream<JSONObject> partitionedStream = messageStream.keyBy(partitionRule);
-
-        ArrayList<PatternStream<JSONObject>> streams = new ArrayList<PatternStream<JSONObject>>();
-
-        parsedPatterns.forEach(tPattern -> streams.add(CEP.pattern(partitionedStream, tPattern)));
-
-        ArrayList<DataStream<JSONObject>> warnings = new ArrayList<>();
-
-        //detecting patterns
-        streams.forEach(stream -> {
-            warnings.add(stream.select(new PatternSelectFunction<JSONObject, JSONObject>() {
-                @Override
-                public JSONObject select(Map<String, List<JSONObject>> map) throws Exception {
-                    JSONObject obj = new JSONObject();
-                    obj.putAll(map);
-                    return obj;
-                }
-            }));
-        });
-
-        //print alarms
-        warnings.forEach(w -> w.map( warning ->{
-            return warning;
-        }).print());
-
-    }
-
-    private Pattern<JSONObject, JSONObject> patternFromJSON(JSONArray pattern) throws Exception{
-        Pattern<JSONObject, JSONObject> parsedPattern = null;
-
-        Iterator<JSONArray> iterator = pattern.iterator();
-
-        while (iterator.hasNext()){
-            parsedPattern = appendToPattern(parsedPattern, iterator.next());
-        }
-
-        return parsedPattern;
-    }
-
-    private Pattern<JSONObject, JSONObject> appendToPattern(Pattern<JSONObject, JSONObject> pattern, JSONArray appender){
-        String action = (String) appender.get(0);
-
-        switch (action){
-            case "_begin":
-                if (pattern == null){
-                    pattern = Pattern.begin((String)appender.get(1));
-                }
-                break;
-            case "_next":
-                pattern = pattern.next((String)appender.get(1));
-                break;
-            case "_followedBy":
-                pattern = pattern.followedBy((String)appender.get(1));
-                break;
-            case "_followedByAny":
-                pattern = pattern.followedByAny((String)appender.get(1));
-                break;
-            case "_notNext":
-                pattern = pattern.notNext((String)appender.get(1));
-                break;
-            case "_notFollowedBy":
-                pattern = pattern.notFollowedBy((String)appender.get(1));
-                break;
-            case "_where":
-                pattern = pattern.where(new UnifiedCondition((String)appender.get(1)));
-                break;
-            case "_or":
-                pattern = pattern.where(new UnifiedCondition((String)appender.get(1)));
-                break;
-            case "_until":
-                pattern = pattern.where(new UnifiedCondition((String)appender.get(1)));
-                break;
-            case "_oneOrMore":
-                pattern = pattern.oneOrMore();
-                break;
-            case "_timesOrMode":
-                pattern = pattern.timesOrMore((Integer)appender.get(1));
-                break;
-            case "_times":
-                pattern = pattern.times((Integer)appender.get(1));
-                break;
-            case "_timesRange":
-                JSONArray range = ((JSONArray) appender.get(1));
-                pattern = pattern.times((Integer)range.get(0), (Integer)range.get(1));
-                break;
-            case "_optional":
-                pattern = pattern.optional();
-                break;
-            case "_greedy":
-                pattern = pattern.greedy();
-                break;
-            case "_consecutive":
-                pattern = pattern.consecutive();
-                break;
-            case "_allowCombinations":
-                pattern = pattern.allowCombinations();
-                break;
-        }
-
-        return pattern;
-    }
-
-    UnifiedCEPLayer startObserving(){
-        return this;
-    }
-
-}
-
-class UnifiedCondition extends SimpleCondition<JSONObject>{
-
-    static Invocable invoker;
-    String functor;
-
-    public UnifiedCondition(String functionName){
-        this.functor = functionName;
-    }
-
-    @Override
-    public boolean filter(JSONObject jsonObject) throws Exception {
-        Boolean result = (Boolean) (invoker.invokeFunction(this.functor, jsonObject));
-        return result;
-    }
-}
-```
 
 ### Deployment tips
 
