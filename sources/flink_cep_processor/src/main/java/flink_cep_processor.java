@@ -46,7 +46,8 @@ public class flink_cep_processor {
         JSONParser parser = new JSONParser();
         JSONObject config = (JSONObject)parser.parse(configRaw);
 
-        UnifiedCEPLayer layer = new UnifiedCEPLayer(config, env).startObserving();
+        UnifiedCEPLayer layer = new UnifiedCEPLayer(config, env);
+        layer.startObserving();
 
         env.execute();
     }
