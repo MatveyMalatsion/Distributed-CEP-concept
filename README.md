@@ -2,46 +2,46 @@
 
 # CEP rules Distribution system: implementation concept
 ### Motivation
-A system is needed that allows to connect the computing devices in a hierarchical structure to build a multi-layer compex event processing on it.
+There is a need for a system that would allow to connect computing devices in hierarchical structure to build on it a multi-layer complex event processing.
 
 ### System Requirements
-The system should allow the user:
-- Flexibly providing CEP rules is specific to each node or set of nodes (without recompiling software processing software)
-- Provide from where the node will receive data for the implementation of the CEP and where the flow of data from the detected events will be directed.
-- Permit the ability to flexibly change the topology of the hierarchical structure (redirect output data streams, add / remove compute nodes)
-- Provide an opportunity to monitor the life cycle of the system (detect failed nodes)
+The system should allow the user to:
+- Flexibly provide CEP rules specific to each node or set of nodes (without recompiling processing software);
+- Set location from where the node will receive data for implementation of the CEP and where the flow of data from detected events will be directed;
+- Flexibly change topology of the hierarchical structure (redirect output data streams, add / remove computing nodes);
+- To monitor the lifecycle of the system (detect failed nodes).
 
 From these requirements a number of technical subtasks follow:
-- Identify the protocols and technologies for data transfer between nodes
-- Implement a program that will handle complex events. It must accept in the input configuration, which contains:
-    * Serialized CEP rules (also known as CEP patterns) - which formally describe the rules by which the program will detect complex events from the incoming data stream.
-    * The configuration data required to read the incoming data stream and the output of the generated data stream
-* Implement a device hierarchy management system that would allow to change the topology of the system, monitor its life cycle, distribute the configuration between different nodes of the system.
+- Identify protocols and technologies for data transfer between nodes;
+- Implement a program that will handle complex events. It must accept input configuration, which contains:
+    * Serialized CEP rules (also known as CEP patterns) - a formal description of rules, using which the program will detect complex events from incoming data stream;
+    * The configuration data required to read incoming data stream and output of generated data stream;
+- Implement a device hierarchy management system that would allow to change topology of the system, monitor its lifecycle, distribute configurations between different nodes of the system.
 
 ## Highlevel concept
 
 [![pic 1](https://github.com/MatveyMalatsion/hierarch_cep_concept/blob/master/2.png?raw=true)](https://www.dropbox.com/s/0vi52t91ukkwy3u/2.png)
 
-(picture clickable)
+(the picture is clickable)
 
 #### Highlevel description
 
-In a distributed system, there is some set of computing nodes. By abstracting from their purpose (they can be either embedded devices, or servers or cloud platforms), the main thing is that they have a UNIX-like environment.
+In a distributed system, there is a set of computing nodes. By abstracting from their purpose (they can be either embedded devices, servers or cloud platforms), the main idea is that they all have a UNIX-like environment.
 
 On each node, a local Apache Flink instance of the incoming data stream is deployed.
 
-For each device, the Consul.io agent is installed as a client. The Consul.io server is deployed separately. Device-agents register themselves and their services (Kafka and others) in the Consul-server. From now on, they form a cluster with a distributed key / value database. When registering, the server receives their network coordinates, information about the services and gets the opportunity to check their operability. Nodes can freely register and leave the Consul server.
+For each device, the Consul.io agent is installed as a client. The Consul.io server is deployed separately. Device agents register themselves and their services (Kafka and others) on the Consul-server. From now on, they form a cluster with a distributed key / value database. When registering, the server receives their network coordinates, information about the services and gets the opportunity to check their availability. Nodes can freely register and leave the Consul server.
 
-#### Consule usage
+#### Usage of Consul
 
 >Consul is a tool for configuring and discovering services in distributed infrastructures. 
 >It provides features such as Service Discovery, Health Checkking, Distributed Key / Value store.
 
-Consul-agents can work in two modes: in server mode and in client mode. Together they form a cluster, which is coordinated using the gossip protocol.
+Consul agents can work in two modes: server mode and client mode. Together, they form a cluster, which is coordinated using the gossip protocol.
 
-One of the key features of Consul is a distributed database, with which you can distribute the necessary information between distributed services. In the case of this system, this will be the configuration and CEP rules. The administrator saves the configuration with a key, which is the network coordinate (IP-adress) of the device for which this configuration is intended.
+One of the key features of Consul is a distributed database, using which you can distribute necessary information between distributed services. In this particular case, this will be the configuration and CEP rules. The administrator saves the configuration using a key, which is network coordinates (IP-address) of device, for which this configuration is intended.
 
-On each device, the Consul agent provides HTTP-api, which is available at localhost on the port on which the agent is running. In particular, this API provides methods for reading a distributed database. In response, Consul returns a similar JSON:
+On each device, the Consul agent provides HTTP-api, which is available at localhost on port, on which the agent is running. In particular, this API provides methods for reading a distributed database. In response, Consul returns a JSON such as the following:
 ```sh
 $ curl \
 http://localhost:<consul-port>/v1/kv/<ip>
@@ -62,21 +62,21 @@ http://localhost:<consul-port>/v1/kv/<ip>
 
 Several fields are important here:
 
-- "ModifyIndex" : This is the number that changes every time the value of the key "Key" changes from the outside. By tracking this field, we can determine whether the data has changed.
+- "ModifyIndex" : This is a number that changes every time the value of the key "Key" changes from the outside. By tracking this field, one can determine whether the data has changed.
 - "Value" : Base64 encoded information
 
 #### Consul observer
-Consul observer is a deamon script that performs several important functions:
+Consul observer is a daemon script that performs several important functions:
 
-- The script periodically polls the local Consul HTTP Api to obtain a configuration from the distributed database.
-- The script can start and end the process in which the CEP program is spinning with the configuration received by the script.
-- By changing the "ModifyIndex" field in the response from Consul, the script understands that administrators have changed the configuration for this device. In this case, it terminates the process on the OS in which the CEP program is running, and then starts a new one, with the same configuration.
+- It periodically polls the local Consul HTTP-api to obtain a configuration from the distributed database.
+- It can start and end processes, in which the CEP program is running with the configuration received by the script.
+- By changing the "ModifyIndex" field in Consul response, it can understand that administrators have changed the configuration for this device. In this case, it terminates the process on the OS, in which the CEP program is running, and then starts a new one with the same configuration.
 - 
 [![pic 3](https://github.com/MatveyMalatsion/hierarch_cep_concept/blob/master/3.png?raw=true)](https://www.dropbox.com/s/acambknkmu0m4bo/3.png?dl=0)
 
 #### Implementation of Consul Observer
 
-There is Python implementation of Consul Observer: (also available as [Gist](https://gist.github.com/MatveyMalatsion/c11481d52dfe7a8853eb131721ad6b31))
+Below is a Python implementation of Consul Observer: (also available as [Gist](https://gist.github.com/MatveyMalatsion/c11481d52dfe7a8853eb131721ad6b31))
 
 ```py
 import sys
@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
 ##### Configuration format
 
-The configuration will be in JSON format and will consist of the following fields
+The configuration is in JSON format and consists of the following fields:
 
 ```json
 {
@@ -197,38 +197,38 @@ The configuration will be in JSON format and will consist of the following field
     ]
 ```
 
-- "readFromKafka", "writeToKafka" : location and topic of input/output kafka instances
-- "patterns" - array of CEP rules, witch will handle CEP on input stream
-- "partitionKey" - a field by witch CEP program will split main message stream on partitions
-- "conditions" - array of JS functors, usable by patterns
+- "readFromKafka", "writeToKafka" : location and topic of input/output kafka instances;
+- "patterns" - an array of CEP rules, which handles CEP on input stream;
+- "partitionKey" - a field, by which CEP program splits main message stream on partitions;
+- "conditions" - an array of JS functors, which are used by patterns.
 
 ##### CEP program
 
-The CEP program is the main component of the computing node. It is this component that implements Complex Event Processing on the incoming data stream. On nodes, it is postponed as a compiled jar file.
+The CEP program is the main component of the computing node. It is the component that implements Complex Event Processing on the incoming data stream. On nodes, it is provided as a compiled jar file.
 
 As input parameters, it takes two keys:
-- --configJson - string in JSON format with configuration
-- --configPath - the path to the file that contains the configuration string
+- --configJson - a string in JSON format with the configuration;
+- --configPath - the path to file that contains the configuration string.
 
 One of these parameters must be provided.
 
-Example of starting the program from the terminal
+Example of starting the program from the terminal:
 
 ```sh
 $ java -jar <path to jar> --jsonPath <path to json>
 ```
 
 ##### СEP program workflow:
-- reading configuration
-- parse serialized patterns to Apache Flink patterns
-- generate general dataStrem from kafka input
-- generate partitional dataStreams by splitted
-- run events detection using patterns
-- generate warnings data stream and push in to kafka output
+- reading configuration;
+- parsing serialized patterns to Apache Flink patterns;
+- generating general dataStream from kafka input;
+- generating partitional dataStreams by splitting general dataSrteam on partitions;
+- running events detection using patterns;
+- generating warnings data stream and sending it to kafka output.
 
-##### Patterns parsing
+##### Parsing patterns:
 
-The mechanism for describing the pattern in Apache Flink involves creating a java object. The whole logic of finding the pattern is constructed using successive calls of various methods of the builder.
+The mechanism for describing the pattern in Apache Flink involves creating a java object. The whole logic of finding the pattern is constructed using conseсutive calls of various methods of the builder.
 
 An example of constructing an apache flink cep pattern:
 ```java
@@ -237,7 +237,7 @@ Pattern<TemperatureWarning, ?> alertPattern = Pattern.<TemperatureWarning>begin(
     .within(Time.seconds(20));
 ```
 
-Since all the methods of the builder are called sequentially, it is possible to represent any pattern as a sequence of method calls to an instance of the Pattern class. This makes it possible to simply parse patterns from JSON in Java.
+Since all methods of the builder are called sequentially, it is possible to represent any pattern as a sequence of method calls to an instance of the Pattern class. This makes it possible to simply parse patterns from JSON in Java.
 
 | FLINK API BUILDER METHODS | JSON representation |
 | ------ | ------ |
@@ -477,15 +477,15 @@ class UnifiedCondition extends SimpleCondition<JSONObject>{
 
 (this section will be supplemented)
 
-- Raise Consul Server outside of topology
+- Start the Consul Server outside of topology;
 - Prepare nodes:
-    - Install and run Zookeper, Kafka server and topic
-    - Download consul_observer.py, cep_processor.jar
-    - Raise consul agent with registered Kafka as a service
-    - Join to cluster
-    - Run consul_ovserver.py
-- Write configurations to distributed K/V Consul database at Consul Server.
-- Enjoy
+    - Install and run Zookeper, Kafka server and topic;
+    - Download consul_observer.py, cep_processor.jar;
+    - Run consul agent with registered Kafka as a service;
+    - Join node to the cluster;
+    - Run consul_ovserver.py.
+- Write configurations to distributed K/V Consul database on the Consul Server;
+- Enjoy.
     
 
 
