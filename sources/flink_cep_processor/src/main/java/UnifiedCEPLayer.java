@@ -29,6 +29,8 @@ public class UnifiedCEPLayer {
     ScriptEngine engine;
     StreamExecutionEnvironment _env;
 
+    HashMap<Pattern<JSONObject, JSONObject>, String> transformMatcher = new HashMap<>();
+
     public UnifiedCEPLayer(JSONObject configuration, StreamExecutionEnvironment env) throws Exception{
         this.configuration = configuration;
         _env = env;
@@ -39,13 +41,14 @@ public class UnifiedCEPLayer {
         _kafkaInputServer = (String) inputConfig.get("server");
         _kafkaInputTopic  = (String) inputConfig.get("topic");
 
-        _kafkaOutputServer = (String) inputConfig.get("server");
-        _kafkaOutputTopic  = (String) inputConfig.get("topic");
+        _kafkaOutputServer = (String) outputConfig.get("server");
+        _kafkaOutputTopic  = (String) outputConfig.get("topic");
 
         // extract conditions
         ScriptEngineManager manager = new ScriptEngineManager();
         engine = manager.getEngineByName("JavaScript");
         UnifiedCondition.invoker = (Invocable)engine;
+        UnifiedPatternSelectFunction.invoker = (Invocable)engine;
 
         JSONArray conditions = (JSONArray) configuration.get("conditions");
 
@@ -58,13 +61,25 @@ public class UnifiedCEPLayer {
         // extract patterns
         JSONArray patterns = (JSONArray)configuration.get("patterns");
 
-        Iterator<JSONArray> objectIterator = patterns.iterator();
+        Iterator<JSONObject> objectIterator = patterns.iterator();
 
         while (objectIterator.hasNext()){
-            parsedPatterns.add(patternFromJSON((JSONArray) objectIterator.next()));
+
+            JSONObject pattern = objectIterator.next();
+            JSONArray patternParts = (JSONArray) (pattern.getOrDefault("pattern", null));
+            if (patternParts != null) {
+
+                Pattern<JSONObject, JSONObject> parsedPattern = patternFromJSON(patternParts);
+
+                String transformFunctor = (String) pattern.getOrDefault("transform_functor", null);
+
+                if (transformFunctor != null){
+                    transformMatcher.put(parsedPattern, transformFunctor);
+                }
+
+                parsedPatterns.add(parsedPattern);
+            }
         }
-
-
     }
 
     private Pattern<JSONObject, JSONObject> patternFromJSON(JSONArray pattern) throws Exception{
@@ -142,46 +157,44 @@ public class UnifiedCEPLayer {
         return pattern;
     }
 
-    UnifiedCEPLayer startObserving(){
+    public void startObserving(){
         //configure input
         Properties properties = new Properties();
         properties.setProperty("bootstrap.servers", this._kafkaInputServer);
 
-        //configure partition rule
-        String partitionKey = (String) configuration.get("partitionKey");
-
-        KeySelector<JSONObject, String> partitionRule = new KeySelector<JSONObject, String>() {
-            @Override
-            public String getKey(JSONObject value) throws Exception {
-                return (String) value.get(partitionKey);
-            }
-        };
+        System.out.println("STARTED!");
 
         //creating all messages stream
-        DataStream<JSONObject> messageStream = _env.addSource(new FlinkKafkaConsumer09<JSONObject>(this._kafkaInputTopic,
+        DataStream<JSONObject> messageStream = _env.addSource(new FlinkKafkaConsumer09<JSONObject>(_kafkaInputTopic,
                 new UnifiedDeserializationSchema(),
                 properties
         )).assignTimestampsAndWatermarks(new IngestionTimeExtractor<>());
 
-        //creating partiton stream
-        DataStream<JSONObject> partitionedStream = messageStream.keyBy(partitionRule);
 
+        //configure partition rule
+        String partitionKey = (String) configuration.getOrDefault("partitionKey", null);
+        if(partitionKey != null) {
+            KeySelector<JSONObject, String> partitionRule = new KeySelector<JSONObject, String>() {
+                @Override
+                public String getKey(JSONObject value) throws Exception {
+                    return (String) value.getOrDefault(partitionKey, null);
+                }
+            };
+            //creating partiton stream
+            messageStream = messageStream.keyBy(partitionRule);
+        }
         ArrayList<PatternStream<JSONObject>> streams = new ArrayList<PatternStream<JSONObject>>();
 
-        parsedPatterns.forEach(tPattern -> streams.add(CEP.pattern(partitionedStream, tPattern)));
+        DataStream<JSONObject> finalMessageStream = messageStream;
+        parsedPatterns.forEach(tPattern -> streams.add(CEP.pattern(finalMessageStream, tPattern)));
 
         ArrayList<DataStream<JSONObject>> warnings = new ArrayList<>();
 
         //detecting patterns
         streams.forEach(stream -> {
-            warnings.add(stream.select(new PatternSelectFunction<JSONObject, JSONObject>() {
-                @Override
-                public JSONObject select(Map<String, List<JSONObject>> map) throws Exception {
-                    JSONObject obj = new JSONObject();
-                    obj.putAll(map);
-                    return obj;
-                }
-            }));
+            Pattern<JSONObject, ?> pattern = stream.getPattern();
+            String transformFunctor = this.transformMatcher.getOrDefault(pattern, null);
+            warnings.add(stream.select(new UnifiedPatternSelectFunction(transformFunctor)));
         });
 
         //print alarms
@@ -195,7 +208,32 @@ public class UnifiedCEPLayer {
             return warning;
         }).addSink(producer));
 
-        return this;
+    }
+
+}
+
+class UnifiedPatternSelectFunction implements PatternSelectFunction<JSONObject, JSONObject>{
+    static Invocable invoker;
+    String functor;
+
+    public UnifiedPatternSelectFunction(String functorName){
+        functor = functorName;
+    }
+
+    @Override
+    public JSONObject select(Map<String, List<JSONObject>> map) throws Exception {
+
+        JSONObject obj = new JSONObject();
+        obj.putAll(map);
+
+        if(functor != null){
+            Map result = (Map)(invoker.invokeFunction(functor, obj));
+            JSONObject json = new JSONObject();
+            json.putAll(result);
+            return json;
+        }
+
+        return obj;
     }
 
 }

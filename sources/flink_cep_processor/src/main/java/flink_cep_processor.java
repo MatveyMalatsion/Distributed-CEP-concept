@@ -39,9 +39,7 @@ public class flink_cep_processor {
             }
         }
 
-
         System.out.println("Provided configuration " + configRaw);
-
 
         JSONParser parser = new JSONParser();
         JSONObject config = (JSONObject)parser.parse(configRaw);
