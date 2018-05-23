@@ -1,3 +1,4 @@
+import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.cep.CEP;
 import org.apache.flink.cep.PatternSelectFunction;
@@ -15,6 +16,7 @@ import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import java.util.*;
+
 
 public class UnifiedCEPLayer {
 
@@ -131,14 +133,14 @@ public class UnifiedCEPLayer {
                 pattern = pattern.oneOrMore();
                 break;
             case "_timesOrMore":
-                pattern = pattern.timesOrMore((Integer)appender.get(1));
+                pattern = pattern.timesOrMore(((Long)appender.get(1)).intValue());
                 break;
             case "_times":
-                pattern = pattern.times((Integer)appender.get(1));
+                pattern = pattern.times(((Long)appender.get(1)).intValue());
                 break;
             case "_timesRange":
                 JSONArray range = ((JSONArray) appender.get(1));
-                pattern = pattern.times((Integer)range.get(0), (Integer)range.get(1));
+                pattern = pattern.times(((Long)range.get(0)).intValue(), ((Long)range.get(1)).intValue());
                 break;
             case "_optional":
                 pattern = pattern.optional();
@@ -151,6 +153,10 @@ public class UnifiedCEPLayer {
                 break;
             case "_allowCombinations":
                 pattern = pattern.allowCombinations();
+                break;
+            case "_within":
+                Object obj = appender.get(1);
+                pattern = pattern.within(org.apache.flink.streaming.api.windowing.time.Time.seconds((Long) appender.get(1)));
                 break;
         }
 

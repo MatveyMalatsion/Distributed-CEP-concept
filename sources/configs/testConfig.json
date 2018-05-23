@@ -1,0 +1,52 @@
+{
+    "readFromKafka" : {
+        "server" : "localhost:9092",
+        "topic"  : "presenceIn"
+    },
+    "writeToKafka" : {
+        "server" : "localhost:9092",
+        "topic"  : "presenceOut"
+    },
+    "patterns" : [
+        {
+            "transform_functor" : "js_func_lackDetected",
+            "pattern" : [
+                ["_begin", "lackPattern_hasHosts"],
+                ["_where", "js_func_hasHosts"],
+                ["_followedBy", "lackPattern_hasntHosts"],
+                ["_where", "js_func_hasntHosts"],
+                ["_whithin", 15],
+                ["_followedBy", "lackPattern_hasntLights"],
+                ["_where", "js_func_isAllLightsTurnedOff"],
+                ["_whithin", 60],
+                ["_times", 1]
+            ]
+        },
+        {
+            "transform_functor" : "js_func_presenceDetected",
+            "pattern" : [
+                ["_begin", "lackPattern_hasntLights"],
+                ["_where", "js_func_isAnyLightWorking"]
+            ]
+        },
+        {
+            "transform_functor" : "js_func_presenceDetected",
+            "pattern" : [
+                ["_begin", "first"],
+                ["_where", "js_func_hasntHosts"],
+                ["_followedBy", "second"],
+                ["_where", "js_func_hasHosts"],
+                ["_within", 15]
+            ]
+        }
+    ],
+    "conditions" : [
+        "function js_func_presenceDetected(value){return {\"type\" : \"presenceNotification\", \"presenceStatus\" : true, \"pattern\" : value}}",
+        "function js_func_lackDetected(value){return {\"type\" : \"presenceNotification\", \"presenceStatus\" : false, \"pattern\" : value}}",
+        "function js_func_hasHosts(value){return value.type == \"NetworkConnections\" &&  value.availableHosts.length > 0}", 
+        "function js_func_hasntHosts(value){return value.type == \"NetworkConnections\" &&  value.availableHosts.length == 0}",
+        "function js_func_isAllLightsTurnedOff(r){if(!(\"lighting\"==r.type))return!1;for(var t=0;t<r.sources.length;t++){if(r.sources[t].status)return!1}return!0}",
+        "function js_func_isAnyLightWorking(r){if(!(\"lighting\"==r.type))return!1;for(var t=0;t<r.sources.length;t++){if(r.sources[t].status)return!0}return!1}",
+        "function js_func_testTransformer(pattern){return {\"test\":\"Matvey\", \"pattern\": pattern}}"
+    ]
+}
