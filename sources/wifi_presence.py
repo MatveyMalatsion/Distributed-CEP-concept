@@ -55,6 +55,7 @@ def nmap_scan_strategy(producer, topic, macs_to_track):
         results = all_macs.intersection(set(map(lambda x: x.upper(), macs_to_track)))
         print("MACs presented: " + str(results))
         producer.send(topic, {'type': 'NetworkConnections', 'availableHosts': list(results)})
+        sleep(10)
 
 
 
