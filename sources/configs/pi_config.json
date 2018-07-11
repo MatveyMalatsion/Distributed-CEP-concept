@@ -1,0 +1,53 @@
+{
+    "readFromKafka" : {
+        "server" : "localhost:9092",
+        "topic"  : "rIn5"
+    },
+    "writeToKafka" : {
+        "server" : "192.168.31.57:9092",
+        "topic"  : "midIn5"
+    },
+    "patterns" : [
+        
+        {
+            "transform_functor" : "raise_presence_warning",
+            "pattern" : [
+                ["_begin", "start_presence_detect"],
+                ["_where", "is_app"],
+                ["_where", "not_appliences_presence_status"],
+                ["_followedBy", "end_presence_detect"],
+                ["_where", "is_app"],
+                ["_where", "appliences_presence_status"],
+                ["_whitin", "10"]
+            ]
+        },
+        {
+            "transform_functor" : "raise_presence_warning",
+            "pattern" : [
+                ["_begin", "start_presence_detect"],
+                ["_where", "is_network"],
+                ["_where", "not_wifi_presence_status"],
+                ["_followedBy", "end_presence_detect"],
+                ["_where", "is_network"],
+                ["_where", "wifi_presence_status"],
+                ["_whitin", "10"]
+            ]
+        },
+        {
+            "transform_functor" : "raise_lack_warning",
+            "pattern" : [
+                ["_begin", "start_lack_detect"],
+                ["_where", "is_network"],
+                ["_where", "wifi_presence_status"],
+                ["_followedBy", "end_lack_detect"],
+                ["_where", "is_network"],
+                ["_where", "not_wifi_presence_status"],
+                ["_whitin", "10"]
+            ]
+        }
+    ],
+    "partitionKey" : "appartamentId",
+    "conditions" : [
+        "function not_wifi_presence_status(e){return!wifi_presence_status(e)}function not_appliences_presence_status(e){return!appliences_presence_status(e)}function is_network(e){return\"networkPresence\"==e.type}function is_app(e){return\"appliances\"==e.type}function wifi_presence_status(e){for(var t=0;t<e.knownHosts.length;t++){host=e.knownHosts[t];for(var n=0;n<e.reacheableHosts.length;n++)if(rHost=e.reacheableHosts,rHost==host)return!0}return!1}function raise_presence_warning(e){return{appartament:e.start_presence_detect[0].appartament,value:!0,type:\"app_presenceStatus\"}}function raise_lack_warning(e){return{appartament:e.start_presence_detect[0].appartament,value:!1,type:\"app_presenceStatus\"}}function appliences_presence_status(e){for(var t=[],n=0;n<e.appliences.length;n++)e.presenseTriggers.contains(e.appliences[n].type)&&(t=t.concat(e.appliences[n]));for(n=0;n<t.length;n++)if(!0===t[n].status)return!0;return!1}Array.prototype.contains=function(e){for(var t=this.length;t--;)if(this[t]===e)return!0;return!1};"    
+    ]
+}

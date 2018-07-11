@@ -1,0 +1,40 @@
+{
+    "readFromKafka" : {
+        "server" : "localhost:9092",
+        "topic"  : "cloudIn1"
+    },
+    "writeToKafka" : {
+        "server" : "localhost:9092",
+        "topic"  : "cloudOut"
+    },
+    "patterns" : [
+        
+        {
+            "transform_functor" : "generateStatus",
+            "pattern" : [
+                ["_begin", "start"],
+                ["_where", "is_presence_status"],
+                ["_where", "apply_precense_level"]
+            ]
+        },
+        {
+            "transform_functor" : "generateStatus",
+            "pattern" : [
+                ["_begin", "start"],
+                ["_where", "is_internal_source"],
+                ["_where", "apply_energy_level"]
+            ]
+        },
+        {
+            "transform_functor" : "generateStatus",
+            "pattern" : [
+                ["_begin", "start"],
+                ["_where", "is_illuminance_warning"],
+                ["_where", "apply_illum_level"]
+            ]
+        }
+    ],
+    "conditions" : [
+        "var presenceLevel=0,illumLevel=\"middle\",energyLevel=0;function is_presence_status(e){return\"floor_presence_status\"==e.type}function apply_precense_level(e){return presenceLevel=e.value,!0}function apply_illum_level(e){return illumLevel=e.value,!0}function apply_energy_level(e){return energyLevel=e.value,!0}function is_internal_source(e){return\"internalSourceEnergyLevel\"==e.type}function is_illuminance_warning(e){return\"general_illuminance_warning\"==e.type}function generateStatus(e){return is_enough_energy()?{buildingId:34,status:\"enough\"}:{buildingId:34,status:\"not enough\"}}function is_enough_energy(){var e=0;return\"middle\"==illumLevel?e=.05:\"low\"==illumLevel&&(e=.1),.1+e+.03*presenceLevel<=energyLevel}function is_not_enough_energy(e){return!is_enough_energy}"    
+    ]
+}

@@ -16,6 +16,7 @@ import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import java.util.*;
+import java.sql.Timestamp;
 
 
 public class UnifiedCEPLayer {
@@ -176,6 +177,11 @@ public class UnifiedCEPLayer {
                 properties
         )).assignTimestampsAndWatermarks(new IngestionTimeExtractor<>());
 
+        messageStream = messageStream.map(message -> {
+           message.put("processingTime", java.time.Instant.now().toEpochMilli());
+           return message;
+        });
+        messageStream.print();
 
         //configure partition rule
         String partitionKey = (String) configuration.getOrDefault("partitionKey", null);
@@ -204,15 +210,25 @@ public class UnifiedCEPLayer {
         });
 
         //print alarms
-        warnings.forEach(w -> w.map( warning ->{
-            return warning;
-        }).print());
+
 
         FlinkKafkaProducer09 producer = new FlinkKafkaProducer09<JSONObject>(_kafkaOutputServer, _kafkaOutputTopic, new UnifiedSerializationSchema());
 
+        for(int i = 0; i < warnings.size(); i++){
+            warnings.set(i, warnings.get(i).map( warning -> {
+                warning.put("eventTime", java.time.Instant.now().toEpochMilli());
+                return warning;
+            }));
+        }
+
         warnings.forEach(w -> w.map( warning ->{
+//            warning.put("eventTime", java.time.Instant.now().getEpochSecond());
             return warning;
         }).addSink(producer));
+
+        warnings.forEach(w -> w.map( warning ->{
+            return warning;
+        }).print());
 
     }
 

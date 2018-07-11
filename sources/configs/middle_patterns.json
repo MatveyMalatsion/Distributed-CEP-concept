@@ -1,0 +1,77 @@
+{
+    "readFromKafka" : {
+        "server" : "localhost:9092",
+        "topic"  : "midIn5"
+    },
+    "writeToKafka" : {
+        "server" : "35.207.53.177:9092",
+        "topic"  : "cloudIn1"
+    },
+    "patterns" : [
+        
+        {
+            "transform_functor" : "generate_security_warning",
+            "pattern" : [
+                ["_begin", "start"],
+                ["_where", "is_presence_warning"],
+                ["_where", "check_security_warning"]
+            ]
+        },
+        {
+            "transform_functor" : "generate_general_illuminance_warning",
+            "pattern" : [
+                ["_begin", "start"],
+                ["_where", "is_illumination_warning"],
+                ["_where", "check_illumination_low"],
+                ["_next", "end"],
+                ["_where", "is_illumination_warning"],
+                ["_where","check_illumination_middle"]
+            ]
+        },
+        {
+            "transform_functor" : "generate_general_illuminance_warning",
+            "pattern" : [
+                ["_begin", "start"],
+                ["_where", "is_illumination_warning"],
+                ["_where", "check_illumination_middle"],
+                ["_next", "end"],
+                ["_where", "is_illumination_warning"],
+                ["_where","check_illumination_high"]
+            ]
+        },
+        {
+            "transform_functor" : "generate_general_illuminance_warning",
+            "pattern" : [
+                ["_begin", "start"],
+                ["_where", "is_illumination_warning"],
+                ["_where", "check_illumination_high"],
+                ["_next", "end"],
+                ["_where", "is_illumination_warning"],
+                ["_where","check_illumination_middle"]
+            ]
+        },
+        {
+            "transform_functor" : "generate_general_illuminance_warning",
+            "pattern" : [
+                ["_begin", "start"],
+                ["_where", "is_illumination_warning"],
+                ["_where", "check_illumination_middle"],
+                ["_next", "end"],
+                ["_where", "is_illumination_warning"],
+                ["_where","check_illumination_low"]
+            ]
+        },
+        {   
+            "transform_functor" : "generate_floor_presence_warning",
+            "pattern" :[ 
+                ["_begin", "start"],
+                ["_where", "is_presence_warning"],
+                ["_where", "register_presence"],
+                ["_times", 3]
+            ]
+        }
+    ],
+    "conditions" : [
+        "Array.prototype.contains=function(e){for(var n=this.length;n--;)if(this[n]===e)return!0;return!1},presence_statuses={};for(var i=0;i<30;i++)presence_statuses[i.toString()]=!0;function is_presence_warning(e){return\"app_presenceStatus\"==e.type}function is_illumination_warning(e){return\"nat_illumination\"==e.type}function register_presence(e){return presence_statuses[e.appartament.id]=e.value,!0}function check_security_warning(e){return!0===e.appartament.holidayMode&&!0===e.value}function check_illumination_low(e){return e.value<.15}function check_illumination_middle(e){return.15<=e.value&&e.value<.6}function generate_general_illuminance_warning(e){return v=e.end[0],status=\"low\",check_illumination_middle(v)?status=\"middle\":check_illumination_high(v)&&(status=\"high\"),{type:\"general_illuminance_warning\",value:status}}function generate_floor_presence_warning(e){for(var n=Object.keys(presence_statuses),t=presenceCount=0;t<n.length;t++)!0===presence_statuses[n[t]]&&(presenceCount+=1);return{type:\"floor_presence_status\",value:presenceCount}}function check_illumination_high(e){return.6<e.value}function generate_security_warning(e){return{type:\"security_warning\",id:e.start[0].appartament.id}}"    
+    ]
+}

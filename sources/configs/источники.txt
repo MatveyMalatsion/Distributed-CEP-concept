@@ -1,0 +1,35 @@
+  
+[2] Apache Flink: Scalable Batch and Stream Data Processing. https://flink.apache.org/. 
+[Обращение 2017-01-02].
+[17] Alexander Alexandrov, Rico Bergmann, Stephan Ewen, Johann-Christoph Freytag, Fabian Hueske, Arvid Heise, Odej Kao, Marcus Leich, Ulf Leser, Volker Markl, Felix Naumann, Mathias Peters, Astrid Rheinländer, Matthias J. Sax, Sebastian Schelter, Mareike Höger, Kostas Tzoumas, and Daniel Warneke. The stratosphere platform for big
+data analytics. The VLDB Journal, 23(6):939–964, December 2014.
+[22] S. Chintapalli, D. Dagit, B. Evans, R. Farivar, T. Graves, M. Holderbaugh, Z. Liu, K. Nusbaum, K. Patil, B. J. Peng, and P. Poulosky. Benchmarking streaming computation engines: Storm, flink and spark streaming. In 2016 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW), pages 1789–1792, May 2016.
+[42] Rohrmann Till. Introducing Complex Event Processing (CEP) with Apache Flink. https://flink.apache.org/news/2016/04/06/cep-monitoring.html, 2016. [Обращение 2017- 01-02].
+[10] Spring. https://spring.io/. [Обращение 2017-01-02]
+http://itband.ru/2010/09/streaminsight/
+
+Event Processing Network (EPN)
+
+https://www.pwc.ru/ru/publications/iot/IoT-inRussia-research_rus.pdf
+
+http://tatstat.gks.ru/wps/wcm/connect/rosstat_ts/tatstat/ru/statistics/
+
+https://www.research.ibm.com/haifa/dept/services/papers/cep_Jan07_nc.pdf
+
+https://www.consul.io/docs/index.html
+
+
+
+Список использованных источников
+
+1.	Kafka Documentation // https://kafka.apache.org URL: https://kafka.apache.org/documentation/ (дата обращения: 19.03.2018).
+2.	Consul Documentation // consul.io URL: https://www.consul.io/docs/index.html (дата обращения: 19.03.2018).
+3.	Spring // spring.io URL: https://spring.io/ (дата обращения: 03.01.2018).
+4.	Apache Flink: Scalable Batch and Stream Data Processing. // flink.apache.org URL: https://flink.apache.org/ (дата обращения: 10.02.2018).
+5.	Alexander Alexandrov, Rico Bergmann, Stephan Ewen, Johann-Christoph Freytag, Fabian Hueske, Arvid Heise, Odej Kao, Marcus Leich, Ulf Leser, Volker Markl, Felix Naumann, Mathias Peters, Astrid Rheinländer, Matthias J. Sax, Sebastian Schelter, Mareike Höger, Kostas Tzoumas, Daniel Warneke The stratosphere platform for big data analytics. // The VLDB Journal. - 2014. - №23. - С. 939-964.
+6.	S. Chintapalli, D. Dagit, B. Evans, R. Farivar, T. Graves, M. Holderbaugh, Z. Liu, K. Nusbaum, K. Patil, B. J. Peng, P. Poulosky. Benchmarking streaming computation engines: Storm, flink and spark streaming. // EEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW). - 2016. - С. 1789–1792.
+7.	Rohrmann Till. Introducing Complex Event Processing (CEP) with Apache Flink // https://flink.apache.org URL: https://flink.apache.org/news/2016/04/06/cep-monitoring.html (дата обращения: 03.01.2018).
+8.	Microsoft StreamInsight и обработка сложных событий Complex Event Processing (CEP) // IT Band URL: http://itband.ru/2010/09/streaminsight/ (дата обращения: 10.05.2018).
+9.	Dr. Asaf Adi Complex Event Processing // - 2007..
+10.	КОМПЛЕКСНЫЙ ИНФОРМАЦИОННО- АНАЛИТИЧЕСКИЙ ДОКЛАД: ЖИЛИЩНОЕ ХОЗЯЙСТВО // http://tatstat.gks.ru/wps/wcm/connect/rosstat_ts/tatstat/ru/statistics/ URL: http://tatstat.gks.ru/wps/wcm/connect/rosstat_ts/tatstat/resources/ae108680401200fe9cfefdd8c740ec4f/i050033r.pdf (дата обращения: 10.05.18).
+11.	«Интернет вещей» (IoT) в России Технология будущего, доступная уже сейчас // https://www.pwc.ru URL: https://www.pwc.ru/ru/publications/iot/IoT-inRussia-research_rus.pdf (дата обращения: 14.04.2018).

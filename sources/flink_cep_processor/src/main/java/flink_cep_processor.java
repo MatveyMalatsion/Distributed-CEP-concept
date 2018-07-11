@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.sql.Timestamp;
 
 import org.apache.commons.cli.MissingArgumentException;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -7,11 +8,16 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
+
 public class flink_cep_processor {
     public static void main(String[] args) throws Exception {
 
-        System.out.println("UNIFIED CEP LAYER -------- MATVEY MALATSION");
 
+
+        System.out.println("UNIFIED CEP LAYER -------- MATVEY MALATSION");
+//
+
+        //считывание конфигурации
         StreamExecutionEnvironment env =
                 StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -40,13 +46,16 @@ public class flink_cep_processor {
         }
 
         System.out.println("Provided configuration " + configRaw);
-
+//
         JSONParser parser = new JSONParser();
         JSONObject config = (JSONObject)parser.parse(configRaw);
-
+//
         UnifiedCEPLayer layer = new UnifiedCEPLayer(config, env);
         layer.startObserving();
 
+        System.out.print("Process started: " + java.time.Instant.now().toEpochMilli());
         env.execute();
+
+
     }
 }

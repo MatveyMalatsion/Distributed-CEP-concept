@@ -1,0 +1,53 @@
+[
+{
+    "appartament" : {
+        "id" : 0,
+        "holidayMode" : false
+    },
+    "type" : "appliances",
+    "presenseTriggers" : ["tv", "music", "pc", "lights"],
+    "appliences" : [
+        {
+            "type" : "tv",
+            "status" : true
+        }
+    ]
+},
+{
+    "appartament" : {
+        "id" : 0,
+        "holidayMode" : false
+    },
+    "type" : "networkPresence",
+    "knownHosts" : ["1", "2", "3"],
+    "reacheableHosts" : ["2"]
+},
+{
+    "type" : "nat_illumination",
+    "value" : 0
+},
+{
+    "type" : "app_presenceStatus",
+    "appartament" : {
+        "id" : 0,
+        "holidayMode" : false
+    }
+},
+{
+    "type" : "security_warning",
+    "floor" : 0,
+    "appartament" : 0
+},
+{
+    "type" : "floorConsumptionRequest",
+    "floor" : 0
+},
+{
+    "type" : "internalSourceEnergyLevel",
+    "value" : 0
+},
+{
+    "type" : "buildingConsumptionStatus",
+    "value" : "procucer"
+}
+]
