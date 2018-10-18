@@ -19,8 +19,7 @@ From these requirements a number of technical subtasks follow:
 - Implement a device hierarchy management system that would allow to change topology of the system, monitor its lifecycle, distribute configurations between different nodes of the system.
 
 ## Highlevel concept
-
-[![pic 1](https://github.com/MatveyMalatsion/hierarch_cep_concept/blob/master/2.png?raw=true)](https://www.dropbox.com/s/0vi52t91ukkwy3u/2.png)
+[![pic 1](https://github.com/MatveyMalatsion/Distributed-CEP-concept/blob/develop/2.png?raw=true)](https://www.dropbox.com/s/0vi52t91ukkwy3u/2.png)
 
 (the picture is clickable)
 
@@ -73,7 +72,7 @@ Consul observer is a daemon script that performs several important functions:
 - By changing the "ModifyIndex" field in Consul response, it can understand that administrators have changed the configuration for this device. In this case, it terminates the process on the OS, in which the CEP program is running, and then starts a new one with the same configuration.
 - It's possible to use Long Polling technology to track "ModifyIndex", by passing it to request as parameter. Script makes request to HTTP-api, but server responses only when data for key will be modified. With long polling, it us possible to reduce the number of requests to a minimum, while still receiving real-time updates.
 
-[![pic 3](https://github.com/MatveyMalatsion/hierarch_cep_concept/blob/master/3.png?raw=true)](https://www.dropbox.com/s/acambknkmu0m4bo/3.png?dl=0)
+[![pic 3](https://github.com/MatveyMalatsion/Distributed-CEP-concept/blob/develop/3.png?raw=true)](https://www.dropbox.com/s/acambknkmu0m4bo/3.png?dl=0)
 
 #### Implementation of Consul Observer
 
